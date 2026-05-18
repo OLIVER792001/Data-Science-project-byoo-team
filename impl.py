@@ -959,19 +959,25 @@ class FullQueryEngine(BasicQueryEngine):
     def getDiamondJournalsInAreasAndCategoriesWithQuartile(
         self, areas: Set[str], categories: Set[str], quartiles: Set[str]
     ) -> List[Journal]:
+        # 标记用户是否真正传入了过滤条件
+        has_area_filter = bool(areas)
+        has_catq_filter = bool(categories or quartiles)
+
         area_issns = self._issns_for_areas(areas)
         catq_issns = self._issns_for_categories_quartiles(categories, quartiles)
 
-        if areas and not area_issns:
+        # 若用户明确传了条件但查不到任何匹配ISSN，说明条件不命中，直接返回空
+        if has_area_filter and not area_issns:
             return []
-        if (categories or quartiles) and not catq_issns:
+        if has_catq_filter and not catq_issns:
             return []
 
-        if area_issns and catq_issns:
+        # 组合ISSN集合：按用户实际传入的条件进行交集/并集
+        if has_area_filter and has_catq_filter:
             combined_issns = area_issns.intersection(catq_issns)
-        elif area_issns:
+        elif has_area_filter:
             combined_issns = area_issns
-        elif catq_issns:
+        elif has_catq_filter:
             combined_issns = catq_issns
         else:
             combined_issns = set()
@@ -980,9 +986,13 @@ class FullQueryEngine(BasicQueryEngine):
         if jdf.empty:
             return []
 
-        if combined_issns:
+        # 核心修复：区分「用户传了条件但交集为空（应返回[]）」
+        # 与「用户没传任何条件（应返回全部）」
+        if has_area_filter or has_catq_filter:
+            # 用户至少传了一个条件，用组合后的ISSN严格过滤
             journals = self._journals_with_issns(jdf, combined_issns)
         else:
+            # 用户未传任何条件，返回全部期刊
             journals = self._df_to_journals(jdf)
 
         return [j for j in journals if j._apc is False]
