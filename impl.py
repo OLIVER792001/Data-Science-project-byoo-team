@@ -461,27 +461,25 @@ class JournalQueryHandler(QueryHandler):
 
     def _sparql_query(self, extra_filter: str = "", limit: Optional[int] = None) -> pd.DataFrame:
         lim = f"LIMIT {limit}" if limit else ""
+        # 使用完整 IRI 而非 PREFIX，避免 rdflib.SPARQLStore 对前缀解析的兼容性问题
         query = f"""
-        PREFIX schema: <https://schema.org/>
-        PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
-
         SELECT ?issn ?title ?publisher ?licence ?apc ?seal ?lang
         WHERE {{
-            ?s a schema:Periodical ;
-               schema:issn ?issn .
-            OPTIONAL {{ ?s schema:name       ?title . }}
-            OPTIONAL {{ ?s schema:publisher  ?publisher . }}
-            OPTIONAL {{ ?s schema:license    ?licence . }}
-            OPTIONAL {{ ?s schema:inLanguage ?lang . }}
+            ?s a <https://schema.org/Periodical> ;
+               <https://schema.org/issn> ?issn .
+            OPTIONAL {{ ?s <https://schema.org/name>       ?title . }}
+            OPTIONAL {{ ?s <https://schema.org/publisher>  ?publisher . }}
+            OPTIONAL {{ ?s <https://schema.org/license>    ?licence . }}
+            OPTIONAL {{ ?s <https://schema.org/inLanguage> ?lang . }}
             OPTIONAL {{
-                ?s schema:additionalProperty ?pv1 .
-                ?pv1 schema:name  "APC" .
-                ?pv1 schema:value ?apc .
+                ?s <https://schema.org/additionalProperty> ?pv1 .
+                ?pv1 <https://schema.org/name>  "APC" .
+                ?pv1 <https://schema.org/value> ?apc .
             }}
             OPTIONAL {{
-                ?s schema:additionalProperty ?pv2 .
-                ?pv2 schema:name  "DOAJSeal" .
-                ?pv2 schema:value ?seal .
+                ?s <https://schema.org/additionalProperty> ?pv2 .
+                ?pv2 <https://schema.org/name>  "DOAJSeal" .
+                ?pv2 <https://schema.org/value> ?seal .
             }}
             {extra_filter}
         }}
